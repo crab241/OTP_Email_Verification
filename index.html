@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OTP Email Verification</title>
+</head>
+<body>
+  <h1>OTP Email Verification</h1>
+  <div id="emailSection">
+    <input type="email" id="email" placeholder="Enter your email" required />
+    <button id="sendOtpButton">Send OTP</button>
+  </div>
+  <div id="otpSection" style="display: none;">
+    <input type="text" id="otp" placeholder="Enter OTP" required />
+    <button id="verifyOtpButton">Verify OTP</button>
+  </div>
+  <p id="message"></p>
+
+  <script>
+    let generatedOtp = null;
+
+    // Function to send OTP via backend server
+    async function sendOtp(email) {
+      const response = await fetch('http://localhost:3000/send-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        document.getElementById('message').textContent = data.message;
+        document.getElementById('emailSection').style.display = 'none';
+        document.getElementById('otpSection').style.display = 'block';
+      } else {
+        document.getElementById('message').textContent = data.message;
+      }
+    }
+
+    // Function to verify OTP
+    function verifyOtp(enteredOtp) {
+      if (enteredOtp === generatedOtp) {
+        document.getElementById('message').textContent = 'OTP verified successfully!';
+      } else {
+        document.getElementById('message').textContent = 'Invalid OTP. Please try again.';
+      }
+    }
+
+    // Event listeners
+    document.getElementById('sendOtpButton').addEventListener('click', () => {
+      const email = document.getElementById('email').value;
+      if (email) {
+        sendOtp(email);
+      } else {
+        document.getElementById('message').textContent = 'Please enter a valid email.';
+      }
+    });
+
+    document.getElementById('verifyOtpButton').addEventListener('click', () => {
+      const otp = document.getElementById('otp').value;
+      if (otp) {
+        verifyOtp(otp);
+      } else {
+        document.getElementById('message').textContent = 'Please enter the OTP.';
+      }
+    });
+  </script>
+</body>
+</html>

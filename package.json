@@ -1,0 +1,26 @@
+{
+  "name": "otp_sms_verification",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/crab241/OTP_SMS_Verification.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/crab241/OTP_SMS_Verification/issues"
+  },
+  "homepage": "https://github.com/crab241/OTP_SMS_Verification#readme",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "form-data": "^4.0.1",
+    "node-fetch": "^3.3.2"
+  }
+}
