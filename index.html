@@ -4,6 +4,25 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>OTP Email Verification</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    input, button {
+      padding: 10px;
+      margin: 5px 0;
+      width: 100%;
+      max-width: 300px;
+    }
+    #otpSection {
+      display: none;
+    }
+    #message {
+      color: red;
+      margin-top: 10px;
+    }
+  </style>
 </head>
 <body>
   <h1>OTP Email Verification</h1>
@@ -11,7 +30,7 @@
     <input type="email" id="email" placeholder="Enter your email" required />
     <button id="sendOtpButton">Send OTP</button>
   </div>
-  <div id="otpSection" style="display: none;">
+  <div id="otpSection">
     <input type="text" id="otp" placeholder="Enter OTP" required />
     <button id="verifyOtpButton">Verify OTP</button>
   </div>
@@ -35,14 +54,15 @@
         document.getElementById('message').textContent = data.message;
         document.getElementById('emailSection').style.display = 'none';
         document.getElementById('otpSection').style.display = 'block';
+        generatedOtp = data.otp; // Store the OTP for verification
       } else {
-        document.getElementById('message').textContent = data.message;
+        document.getElementById('message').textContent = data.message || 'Failed to send OTP.';
       }
     }
 
     // Function to verify OTP
     function verifyOtp(enteredOtp) {
-      if (enteredOtp === generatedOtp) {
+      if (enteredOtp == generatedOtp) {
         document.getElementById('message').textContent = 'OTP verified successfully!';
       } else {
         document.getElementById('message').textContent = 'Invalid OTP. Please try again.';
