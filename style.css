@@ -53,7 +53,7 @@ button {
     width: 100%;
     padding: 0.75rem;
     margin: 0.5rem 0;
-    background-color: #279565;
+    background-color: #2fb078;
     color: #ffffff;
     border: none;
     border-radius: 5px;
@@ -63,7 +63,7 @@ button {
 }
 
 button:hover {
-    background-color: #1f7520;
+    background-color: #06a40e;
 }
 
 button:active {

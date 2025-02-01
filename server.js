@@ -7,7 +7,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Replace with your Mailgun API key and domain
+// Replace with host server's Mailgun API key and domain
 const MAILGUN_API_KEY = '';
 const MAILGUN_DOMAIN = ''; 
 app.post('/send-otp', async (req, res) => {
@@ -18,10 +18,10 @@ app.post('/send-otp', async (req, res) => {
 
   // Prepare form data for Mailgun API
   const formData = new FormData();
-  formData.append('from', `OTP Verification <mailgun@${MAILGUN_DOMAIN}>`);
+  formData.append('from', `Group1WebSecurity<mailgun@${MAILGUN_DOMAIN}>`);
   formData.append('to', email);
   formData.append('subject', 'Your OTP for Verification');
-  formData.append('text', `Your OTP is: ${otp}`);
+  formData.append('text', `Your OTP code is: ${otp}`);
 
   try {
     // Send the email via Mailgun API
