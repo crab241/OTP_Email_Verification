@@ -1,0 +1,99 @@
+/* General Styles */
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f4f4f9;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    text-align: center;
+}
+
+/* Container Styles */
+#emailSection, #otpSection {
+    background-color: #ffffff;
+    padding: 2rem;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+/* Heading Styles */
+h1 {
+    font-size: 2rem;
+    color: #333333;
+    margin-bottom: 1.5rem;
+}
+
+/* Input Styles */
+input {
+    width: 90%;
+    padding: 0.75rem;
+    margin: 0.5rem 0;
+    border: 1px solid #cccccc;
+    border-radius: 5px;
+    font-size: 1rem;
+    outline: none;
+    text-align: center;
+}
+
+input:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+}
+
+/* Button Styles */
+button {
+    width: 100%;
+    padding: 0.75rem;
+    margin: 0.5rem 0;
+    background-color: #007bff;
+    color: #ffffff;
+    border: none;
+    border-radius: 5px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+button:active {
+    background-color: #004080;
+}
+
+/* Message Styles */
+#message {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    color: #ff0000;
+}
+
+/* OTP Section Styles */
+#otpSection {
+    display: none;
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+    #emailSection, #otpSection {
+        padding: 1rem;
+    }
+    
+    h1 {
+        font-size: 1.5rem;
+    }
+    
+    input, button {
+        padding: 0.5rem;
+        font-size: 0.9rem;
+    }
+}
