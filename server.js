@@ -79,7 +79,7 @@ app.post('/verify-otp', (req, res) => {
   }
 
   // Check if the user has exceeded the attempt limit
-  if (otpData.attempts >= 3) {
+  if (otpData.attempts >= 4) {
     return res.status(400).json({ message: 'Too many failed attempts. Please request a new OTP.' });
   }
 
