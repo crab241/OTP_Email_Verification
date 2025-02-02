@@ -19,6 +19,7 @@
   "homepage": "https://github.com/crab241/OTP_SMS_Verification#readme",
   "dependencies": {
     "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "form-data": "^4.0.1",
     "node-fetch": "^2.7.0"

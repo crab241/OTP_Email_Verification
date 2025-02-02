@@ -15,18 +15,28 @@ async function sendOtp(email) {
     document.getElementById('message').textContent = data.message;
     document.getElementById('emailSection').style.display = 'none';
     document.getElementById('otpSection').style.display = 'block';
-    generatedOtp = data.otp; // Store the OTP for verification
   } else {
     document.getElementById('message').textContent = data.message || 'Failed to send OTP.';
   }
 }
 
 // Function to verify OTP
-function verifyOtp(enteredOtp) {
-  if (enteredOtp == generatedOtp) {
-    document.getElementById('message').textContent = 'OTP verified successfully!';
+async function verifyOtp(enteredOtp) {
+  const response = await fetch('http://localhost:3000/verify-otp', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ otp: enteredOtp }),
+  });
+
+  const data = await response.json();
+  if (response.ok) {
+    document.getElementById('message').textContent = data.message;
+    document.getElementById('otpSection').style.display = 'none';
+    document.getElementById('emailSection').style.display = 'block';
   } else {
-    document.getElementById('message').textContent = 'Invalid OTP. Please try again.';
+    document.getElementById('message').textContent = data.message || 'Failed to verify OTP.';
   }
 }
 
