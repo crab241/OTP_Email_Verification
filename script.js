@@ -1,7 +1,16 @@
-let generatedOtp = null;
+// Function to validate email format
+function isValidEmail(email) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; // Basic email regex
+  return emailRegex.test(email);
+}
 
 // Function to send OTP via backend server
 async function sendOtp(email) {
+  if (!isValidEmail(email)) {
+    document.getElementById('message').textContent = 'Please enter a valid email address.';
+    return;
+  }
+
   const response = await fetch('http://localhost:3000/send-otp', {
     method: 'POST',
     headers: {

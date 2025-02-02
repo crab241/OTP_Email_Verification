@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const crypto = require('crypto'); // For secure OTP generation
 const fetch = require('node-fetch');
 const FormData = require('form-data');
 require('dotenv').config(); // Load environment variables from .env
@@ -14,31 +15,80 @@ const MAILGUN_DOMAIN = process.env.MAILGUN_DOMAIN;
 
 // Store OTP and its expiration time
 let otpData = {
-  otp: null,
+  otpHash: null, // Store hashed OTP instead of plain OTP
   expiresAt: null,
   attempts: 0, // Track failed OTP attempts
 };
+
+// Store rate limit data (email -> { count, lastRequestTime })
+const rateLimitMap = new Map();
+
+// Rate limit configuration
+const RATE_LIMIT = {
+  MAX_REQUESTS: 3, // Max 3 requests
+  TIME_WINDOW: 10 * 60 * 1000, // 10 minutes in milliseconds
+};
+
+// Function to validate email format
+function isValidEmail(email) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; // Basic email regex
+  return emailRegex.test(email);
+}
+
+// Function to generate a secure 6-digit OTP
+function generateOtp() {
+  return crypto.randomInt(100000, 999999); // Cryptographically secure
+}
+
+// Function to hash the OTP
+function hashOtp(otp) {
+  return crypto.createHash('sha256').update(otp.toString()).digest('hex');
+}
 
 // Endpoint to send OTP
 app.post('/send-otp', async (req, res) => {
   const { email } = req.body;
 
-  // Generate a random 6-digit OTP
-  const otp = Math.floor(100000 + Math.random() * 900000);
+  // Validate email format
+  if (!isValidEmail(email)) {
+    return res.status(400).json({ message: 'Please enter a valid email address.' });
+  }
+
+  // Check rate limit for the email
+  const now = Date.now();
+  const rateLimit = rateLimitMap.get(email) || { count: 0, lastRequestTime: 0 };
+
+  if (rateLimit.count >= RATE_LIMIT.MAX_REQUESTS && now - rateLimit.lastRequestTime < RATE_LIMIT.TIME_WINDOW) {
+    return res.status(429).json({ message: 'Too many requests. Please try again later.' });
+  }
+
+  // Update rate limit data
+  if (now - rateLimit.lastRequestTime > RATE_LIMIT.TIME_WINDOW) {
+    rateLimit.count = 0; // Reset count if the time window has passed
+  }
+  rateLimit.count += 1;
+  rateLimit.lastRequestTime = now;
+  rateLimitMap.set(email, rateLimit);
+
+  // Generate a secure 6-digit OTP
+  const otp = generateOtp();
 
   // Set OTP expiration time (60 seconds from now)
   const expiresAt = Date.now() + 60000; // 60 seconds
 
+  // Hash the OTP before storing it
+  const otpHash = hashOtp(otp);
+
   // Update OTP data
   otpData = {
-    otp,
+    otpHash,
     expiresAt,
     attempts: 0, // Reset attempts when a new OTP is sent
   };
 
   // Prepare form data for Mailgun API
   const formData = new FormData();
-  formData.append('from', `Group1_WebSecurity <mailgun@${MAILGUN_DOMAIN}>`);
+  formData.append('from', `OTP Verification <mailgun@${MAILGUN_DOMAIN}>`);
   formData.append('to', email);
   formData.append('subject', 'Your OTP for Verification');
   formData.append('text', `Your OTP is: ${otp}`);
@@ -74,7 +124,7 @@ app.post('/verify-otp', (req, res) => {
   const { otp } = req.body;
 
   // Check if OTP exists and is not expired
-  if (!otpData.otp || Date.now() > otpData.expiresAt) {
+  if (!otpData.otpHash || Date.now() > otpData.expiresAt) {
     return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
   }
 
@@ -83,11 +133,12 @@ app.post('/verify-otp', (req, res) => {
     return res.status(400).json({ message: 'Too many failed attempts. Please request a new OTP.' });
   }
 
-  // Verify the OTP
-  if (otp == otpData.otp) {
+  // Hash the user-provided OTP and compare it to the stored hash
+  const userOtpHash = hashOtp(otp);
+  if (userOtpHash === otpData.otpHash) {
     // Reset OTP data after successful verification
     otpData = {
-      otp: null,
+      otpHash: null,
       expiresAt: null,
       attempts: 0,
     };
