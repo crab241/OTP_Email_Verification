@@ -45,12 +45,19 @@ function hashOtp(otp) {
   return crypto.createHash('sha256').update(otp.toString()).digest('hex');
 }
 
+// Function to log messages
+function log(message, level = 'info') {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] [${level.toUpperCase()}] ${message}`);
+}
+
 // Endpoint to send OTP
 app.post('/send-otp', async (req, res) => {
   const { email } = req.body;
 
   // Validate email format
   if (!isValidEmail(email)) {
+    log(`Invalid email format: ${email}`, 'warn');
     return res.status(400).json({ message: 'Please enter a valid email address.' });
   }
 
@@ -59,6 +66,7 @@ app.post('/send-otp', async (req, res) => {
   const rateLimit = rateLimitMap.get(email) || { count: 0, lastRequestTime: 0 };
 
   if (rateLimit.count >= RATE_LIMIT.MAX_REQUESTS && now - rateLimit.lastRequestTime < RATE_LIMIT.TIME_WINDOW) {
+    log(`Rate limit exceeded for email: ${email}`, 'warn');
     return res.status(429).json({ message: 'Too many requests. Please try again later.' });
   }
 
@@ -86,9 +94,12 @@ app.post('/send-otp', async (req, res) => {
     attempts: 0, // Reset attempts when a new OTP is sent
   };
 
+  // Log OTP generation
+  log(`OTP generated for email: ${email}`, 'info');
+
   // Prepare form data for Mailgun API
   const formData = new FormData();
-  formData.append('from', `OTP Verification <mailgun@${MAILGUN_DOMAIN}>`);
+  formData.append('from', `Group1_WebSecurity <mailgun@${MAILGUN_DOMAIN}>`);
   formData.append('to', email);
   formData.append('subject', 'Your OTP for Verification');
   formData.append('text', `Your OTP is: ${otp}`);
@@ -105,16 +116,17 @@ app.post('/send-otp', async (req, res) => {
 
     if (response.ok) {
       // If the email is sent successfully, return a success message
+      log(`OTP sent successfully to email: ${email}`, 'info');
       res.status(200).json({ message: 'OTP sent successfully!' });
     } else {
       // If Mailgun API returns an error, log it and return an error message
       const errorData = await response.json();
-      console.error('Mailgun API Error:', errorData);
+      log(`Failed to send OTP to email: ${email}. Error: ${JSON.stringify(errorData)}`, 'error');
       res.status(500).json({ message: 'Failed to send OTP.' });
     }
   } catch (error) {
     // If there's a server error, log it and return an error message
-    console.error('Server Error:', error);
+    log(`Server error while sending OTP to email: ${email}. Error: ${error.message}`, 'error');
     res.status(500).json({ message: 'An error occurred.' });
   }
 });
@@ -125,11 +137,13 @@ app.post('/verify-otp', (req, res) => {
 
   // Check if OTP exists and is not expired
   if (!otpData.otpHash || Date.now() > otpData.expiresAt) {
+    log('OTP verification failed: OTP expired', 'warn');
     return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
   }
 
   // Check if the user has exceeded the attempt limit
   if (otpData.attempts >= 4) {
+    log('OTP verification failed: Too many attempts', 'warn');
     return res.status(400).json({ message: 'Too many failed attempts. Please request a new OTP.' });
   }
 
@@ -142,10 +156,12 @@ app.post('/verify-otp', (req, res) => {
       expiresAt: null,
       attempts: 0,
     };
+    log('OTP verified successfully', 'info');
     return res.status(200).json({ message: 'OTP verified successfully!' });
   } else {
     // Increment failed attempts
     otpData.attempts += 1;
+    log(`OTP verification failed: Invalid OTP. Attempts remaining: ${4 - otpData.attempts}`, 'warn');
     return res.status(400).json({ message: `Invalid OTP. ${4 - otpData.attempts} attempts remaining.` });
   }
 });
@@ -153,5 +169,5 @@ app.post('/verify-otp', (req, res) => {
 // Start the server
 const PORT = 3000;
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+  log(`Server is running on http://localhost:${PORT}`, 'info');
 });
