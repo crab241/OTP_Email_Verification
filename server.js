@@ -63,6 +63,12 @@ app.use(express.json());
 const MAILGUN_API_KEY = process.env.MAILGUN_API_KEY;
 const MAILGUN_DOMAIN = process.env.MAILGUN_DOMAIN;
 
+// Rate limiting configuration
+const RATE_LIMIT = {
+  MAX_REQUESTS: 5, // Max 5 OTP requests
+  TIME_WINDOW: 10 * 60 * 1000, // 10 minutes in milliseconds
+};
+
 // Function to generate a secure 6-digit OTP
 function generateOtp() {
   return crypto.randomInt(100000, 999999);
@@ -78,6 +84,37 @@ function isValidEmail(email) {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; // Basic email regex
   return emailRegex.test(email);
 }
+// Function to check rate limit for an email
+async function checkRateLimit(email) {
+  const now = Date.now();
+  const key = `rate_limit:${email}`;
+
+  // Get the current rate limit data from Redis
+  const rateLimitData = await redisClient.get(key);
+  if (!rateLimitData) {
+    // If no data exists, initialize it
+    await redisClient.set(key, JSON.stringify({ count: 1, lastRequestTime: now }));
+    return true; // Allow the request
+  }
+
+  const { count, lastRequestTime } = JSON.parse(rateLimitData);
+
+  // Check if the time window has passed
+  if (now - lastRequestTime > RATE_LIMIT.TIME_WINDOW) {
+    // Reset the count if the time window has passed
+    await redisClient.set(key, JSON.stringify({ count: 1, lastRequestTime: now }));
+    return true; // Allow the request
+  }
+
+  // Check if the request count exceeds the limit
+  if (count >= RATE_LIMIT.MAX_REQUESTS) {
+    return false; // Block the request
+  }
+
+  // Increment the request count
+  await redisClient.set(key, JSON.stringify({ count: count + 1, lastRequestTime }));
+  return true; // Allow the request
+}
 
 // Endpoint to send OTP
 app.post('/send-otp', async (req, res) => {
@@ -86,6 +123,13 @@ app.post('/send-otp', async (req, res) => {
   if (!isValidEmail(email)) {
     logger.warn(`Invalid email format: ${email}`);
     return res.status(400).json({ message: 'Please enter a valid email address.' });
+  }
+
+  // Check rate limit for the email
+  const isAllowed = await checkRateLimit(email);
+  if (!isAllowed) {
+    logger.warn(`Rate limit exceeded for email: ${email}`);
+    return res.status(429).json({ message: 'Too many OTP requests. Please try again later.' });
   }
 
   const otp = generateOtp();
