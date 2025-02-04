@@ -11,12 +11,30 @@ require('dotenv').config();
 const logger = winston.createLogger({
   level: 'info',
   format: winston.format.combine(
-    winston.format.timestamp(),
+    winston.format.timestamp({
+      format: 'YYYY-MM-DD HH:mm:ss', // Customize timestamp format
+    }),
     winston.format.json()
   ),
   transports: [
-    new winston.transports.Console(),
-    new winston.transports.File({ filename: 'logs/app.log' }),
+    // Log to the console
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.colorize(),
+        winston.format.printf(({ timestamp, level, message }) => {
+          return `[${timestamp}] [${level}]: ${message}`;
+        })
+      ),
+    }),
+    // Log to a file
+    new winston.transports.File({
+      filename: 'logs/app.log',
+      format: winston.format.combine(
+        winston.format.printf(({ timestamp, level, message }) => {
+          return `[${timestamp}] [${level}]: ${message}`;
+        })
+      ),
+    }),
   ],
 });
 
