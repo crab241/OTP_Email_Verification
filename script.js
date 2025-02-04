@@ -27,6 +27,9 @@ async function sendOtp(email) {
 
     const data = await response.json();
     if (response.ok) {
+      //Display email when verifying OTP
+      document.getElementById('emailDisplay').textContent = email;
+      //Show sucess message and switch to OTP selection
       document.getElementById('message').textContent = data.message;
       document.getElementById('emailSection').style.display = 'none';
       document.getElementById('otpSection').style.display = 'block';
@@ -44,7 +47,7 @@ async function sendOtp(email) {
 }
 
 // Function to verify OTP
-async function verifyOtp(enteredOtp) {
+async function verifyOtp(email, enteredOtp) {
   const verifyOtpButton = document.getElementById('verifyOtpButton');
   verifyOtpButton.disabled = true;
   verifyOtpButton.textContent = 'Verifying...';
@@ -55,7 +58,7 @@ async function verifyOtp(enteredOtp) {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ otp: enteredOtp }),
+      body: JSON.stringify({ email, otp: enteredOtp }), // Include email in the request
     });
 
     const data = await response.json();
@@ -86,10 +89,11 @@ document.getElementById('sendOtpButton').addEventListener('click', () => {
 });
 
 document.getElementById('verifyOtpButton').addEventListener('click', () => {
+  const email = document.getElementById('email').value; // Get the email from the input
   const otp = document.getElementById('otp').value;
-  if (otp) {
-    verifyOtp(otp);
+  if (email && otp) {
+    verifyOtp(email, otp); // Pass both email and OTP to the verifyOtp function
   } else {
-    document.getElementById('message').textContent = 'Please enter the OTP.';
+    document.getElementById('message').textContent = 'Please enter the email and OTP.';
   }
 });

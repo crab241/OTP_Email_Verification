@@ -4,29 +4,37 @@ const crypto = require('crypto');
 const fetch = require('node-fetch');
 const FormData = require('form-data');
 const winston = require('winston');
+const redis = require('redis');
 require('dotenv').config();
 
 // Configure Winston logger
 const logger = winston.createLogger({
-  level: 'info', // Log level (e.g., 'info', 'warn', 'error')
+  level: 'info',
   format: winston.format.combine(
-    winston.format.timestamp(), // Add timestamp to logs
-    winston.format.json() // Log in JSON format
+    winston.format.timestamp(),
+    winston.format.json()
   ),
   transports: [
-    // Log to the console
-    new winston.transports.Console({
-      format: winston.format.combine(
-        winston.format.colorize(), // Add colors to console logs
-        winston.format.simple() // Simple format for console
-      ),
-    }),
-    // Log to a file
-    new winston.transports.File({
-      filename: 'logs/app.log', // Log file path
-      level: 'info', // Log level for the file
-    }),
+    new winston.transports.Console(),
+    new winston.transports.File({ filename: 'logs/app.log' }),
   ],
+});
+
+// Create Redis client
+const redisClient = redis.createClient({
+  url: process.env.REDIS_URL || 'redis://localhost:6379', // Use environment variable for Redis URL
+});
+
+// Handle Redis connection errors
+redisClient.on('error', (err) => {
+  logger.error(`Redis error: ${err.message}`);
+});
+
+// Connect to Redis
+redisClient.connect().then(() => {
+  logger.info('Connected to Redis');
+}).catch((err) => {
+  logger.error(`Failed to connect to Redis: ${err.message}`);
 });
 
 const app = express();
@@ -37,19 +45,6 @@ app.use(express.json());
 const MAILGUN_API_KEY = process.env.MAILGUN_API_KEY;
 const MAILGUN_DOMAIN = process.env.MAILGUN_DOMAIN;
 
-// Store OTP and its expiration time
-let otpData = {
-  otpHash: null,
-  expiresAt: null,
-  attempts: 0,
-};
-
-// Function to validate email format
-function isValidEmail(email) {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; // Basic email regex
-  return emailRegex.test(email);
-}
-
 // Function to generate a secure 6-digit OTP
 function generateOtp() {
   return crypto.randomInt(100000, 999999);
@@ -58,6 +53,12 @@ function generateOtp() {
 // Function to hash the OTP
 function hashOtp(otp) {
   return crypto.createHash('sha256').update(otp.toString()).digest('hex');
+}
+
+// Function to validate email format
+function isValidEmail(email) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; // Basic email regex
+  return emailRegex.test(email);
 }
 
 // Endpoint to send OTP
@@ -70,14 +71,19 @@ app.post('/send-otp', async (req, res) => {
   }
 
   const otp = generateOtp();
-  const expiresAt = Date.now() + 60000; // 60 seconds
   const otpHash = hashOtp(otp);
+  const expiresAt = Date.now() + 60000; // 60 seconds
 
-  otpData = {
-    otpHash,
-    expiresAt,
-    attempts: 0,
-  };
+  // Store OTP in Redis with a TTL (Time-to-Live)
+  try {
+    await redisClient.set(email, JSON.stringify({ otpHash, expiresAt, attempts: 0 }), {
+      EX: 60, // Set TTL to 60 seconds
+    });
+    logger.info(`OTP generated for email: ${email}`);
+  } catch (err) {
+    logger.error(`Failed to store OTP in Redis: ${err.message}`);
+    return res.status(500).json({ message: 'Failed to generate OTP.' });
+  }
 
   const formData = new FormData();
   formData.append('from', `Group1_WebSecurity <mailgun@${MAILGUN_DOMAIN}>`);
@@ -109,32 +115,50 @@ app.post('/send-otp', async (req, res) => {
 });
 
 // Endpoint to verify OTP
-app.post('/verify-otp', (req, res) => {
-  const { otp } = req.body;
+app.post('/verify-otp', async (req, res) => {
+  const { email, otp } = req.body;
 
-  if (!otpData.otpHash || Date.now() > otpData.expiresAt) {
-    logger.warn('OTP verification failed: OTP expired');
-    return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
+  if (!email || !otp) {
+    return res.status(400).json({ message: 'Email and OTP are required.' });
   }
 
-  if (otpData.attempts >= 4) {
-    logger.warn('OTP verification failed: Too many attempts');
-    return res.status(400).json({ message: 'Too many failed attempts. Please request a new OTP.' });
-  }
+  try {
+    // Retrieve OTP data from Redis
+    const otpData = await redisClient.get(email);
+    if (!otpData) {
+      logger.warn(`OTP verification failed: No OTP found for email: ${email}`);
+      return res.status(400).json({ message: 'OTP expired or not found. Please request a new one.' });
+    }
 
-  const userOtpHash = hashOtp(otp);
-  if (userOtpHash === otpData.otpHash) {
-    otpData = {
-      otpHash: null,
-      expiresAt: null,
-      attempts: 0,
-    };
-    logger.info('OTP verified successfully');
-    return res.status(200).json({ message: 'OTP verified successfully!' });
-  } else {
-    otpData.attempts += 1;
-    logger.warn(`OTP verification failed: Invalid OTP. Attempts remaining: ${5 - otpData.attempts}`);
-    return res.status(400).json({ message: `Invalid OTP. ${5 - otpData.attempts} attempts remaining.` });
+    const { otpHash, expiresAt, attempts } = JSON.parse(otpData);
+
+    if (Date.now() > expiresAt) {
+      logger.warn(`OTP verification failed: OTP expired for email: ${email}`);
+      return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
+    }
+
+    if (attempts >= 4) {
+      logger.warn(`OTP verification failed: Too many attempts for email: ${email}`);
+      return res.status(400).json({ message: 'Too many failed attempts. Please request a new OTP.' });
+    }
+
+    const userOtpHash = hashOtp(otp);
+    if (userOtpHash === otpHash) {
+      // Delete the OTP from Redis after successful verification
+      await redisClient.del(email);
+      logger.info(`OTP verified successfully for email: ${email}`);
+      return res.status(200).json({ message: 'OTP verified successfully!' });
+    } else {
+      // Increment failed attempts
+      await redisClient.set(email, JSON.stringify({ otpHash, expiresAt, attempts: attempts + 1 }), {
+        EX: 60, // Reset TTL
+      });
+      logger.warn(`OTP verification failed: Invalid OTP for email: ${email}. Attempts remaining: ${4 - attempts}`);
+      return res.status(400).json({ message: `Invalid OTP. ${4 - attempts} attempts remaining.` });
+    }
+  } catch (err) {
+    logger.error(`Error verifying OTP for email: ${email}. Error: ${err.message}`);
+    return res.status(500).json({ message: 'An error occurred.' });
   }
 });
 
