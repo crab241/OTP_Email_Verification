@@ -11,41 +11,67 @@ async function sendOtp(email) {
     return;
   }
 
-  const response = await fetch('http://localhost:3000/send-otp', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ email }),
-  });
+  // Disable the button to prevent multiple requests
+  const sendOtpButton = document.getElementById('sendOtpButton');
+  sendOtpButton.disabled = true;
+  sendOtpButton.textContent = 'Sending...';
 
-  const data = await response.json();
-  if (response.ok) {
-    document.getElementById('message').textContent = data.message;
-    document.getElementById('emailSection').style.display = 'none';
-    document.getElementById('otpSection').style.display = 'block';
-  } else {
-    document.getElementById('message').textContent = data.message || 'Failed to send OTP.';
+  try {
+    const response = await fetch('http://localhost:3000/send-otp', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email }),
+    });
+
+    const data = await response.json();
+    if (response.ok) {
+      document.getElementById('message').textContent = data.message;
+      document.getElementById('emailSection').style.display = 'none';
+      document.getElementById('otpSection').style.display = 'block';
+    } else {
+      document.getElementById('message').textContent = data.message || 'Failed to send OTP.';
+    }
+  } catch (error) {
+    document.getElementById('message').textContent = 'An error occurred. Please try again.';
+    console.error('Error:', error);
+  } finally {
+    // Re-enable the button
+    sendOtpButton.disabled = false;
+    sendOtpButton.textContent = 'Send OTP';
   }
 }
 
 // Function to verify OTP
 async function verifyOtp(enteredOtp) {
-  const response = await fetch('http://localhost:3000/verify-otp', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ otp: enteredOtp }),
-  });
+  const verifyOtpButton = document.getElementById('verifyOtpButton');
+  verifyOtpButton.disabled = true;
+  verifyOtpButton.textContent = 'Verifying...';
 
-  const data = await response.json();
-  if (response.ok) {
-    document.getElementById('message').textContent = data.message;
-    document.getElementById('otpSection').style.display = 'none';
-    document.getElementById('emailSection').style.display = 'block';
-  } else {
-    document.getElementById('message').textContent = data.message || 'Failed to verify OTP.';
+  try {
+    const response = await fetch('http://localhost:3000/verify-otp', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ otp: enteredOtp }),
+    });
+
+    const data = await response.json();
+    if (response.ok) {
+      document.getElementById('message').textContent = data.message;
+      document.getElementById('otpSection').style.display = 'none';
+      document.getElementById('emailSection').style.display = 'block';
+    } else {
+      document.getElementById('message').textContent = data.message || 'Failed to verify OTP.';
+    }
+  } catch (error) {
+    document.getElementById('message').textContent = 'An error occurred. Please try again.';
+    console.error('Error:', error);
+  } finally {
+    verifyOtpButton.disabled = false;
+    verifyOtpButton.textContent = 'Verify OTP';
   }
 }
 
