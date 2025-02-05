@@ -22,7 +22,8 @@ const logger = winston.createLogger({
       format: winston.format.combine(
         winston.format.colorize(),
         winston.format.printf(({ timestamp, level, message }) => {
-          return `[${timestamp}] [${level}]: ${message}`;
+          const localTime = new Date(timestamp).toLocaleString(); // Convert to local time
+          return `[UTC: ${timestamp}] [Local: ${localTime}] [${level}]: ${message}`;
         })
       ),
     }),
@@ -31,7 +32,8 @@ const logger = winston.createLogger({
       filename: 'logs/app.log',
       format: winston.format.combine(
         winston.format.printf(({ timestamp, level, message }) => {
-          return `[${timestamp}] [${level}]: ${message}`;
+          const localTime = new Date(timestamp).toLocaleString(); // Convert to local time
+          return `[UTC: ${timestamp}] [Local: ${localTime}] [${level}]: ${message}`;
         })
       ),
     }),
@@ -199,7 +201,7 @@ app.post('/verify-otp', async (req, res) => {
       return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
     }
 
-    if (attempts >= 4) {
+    if (attempts >= 5) {
       logger.warn(`OTP verification failed: Too many attempts for email: ${email}`);
       return res.status(400).json({ message: 'Too many failed attempts. Please request a new OTP.' });
     }
