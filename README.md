@@ -29,6 +29,7 @@ Before running the project, ensure you have the following installed:
 - **Node.js** (v14 or higher)
 - **npm** (comes with Node.js)
 - **A Mailgun account** (for sending emails)
+- Redis (for storing OTPs data)
 
 ## Setup Instructions
 
@@ -87,7 +88,7 @@ Open the `index.html` file in your browser or use a local server (e.g., VS Code 
 - **Mailgun:** For providing the email-sending service.
 - **Node.js:** For making backend development easy and efficient.
 - **Express:** For simplifying API creation.
-- Redis: For data storage, scalability
+- **Redis**: For data storage, scalability
 
 ## Contact
 
